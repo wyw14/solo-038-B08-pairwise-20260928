@@ -42,6 +42,16 @@ func (state *State) Thread(owner string) error {
 	return nil
 }
 
+func (state *State) Unthread(owner string, jobGeneration uint64) bool {
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	if owner == "" || owner != state.owner || jobGeneration != state.jobGeneration {
+		return false
+	}
+	state.threaded = false
+	return true
+}
+
 func (state *State) Advance(owner string, meters float64) error {
 	state.mu.Lock()
 	defer state.mu.Unlock()
