@@ -41,6 +41,9 @@ func (coordinator *Coordinator) Cancel(job model.Job, now time.Time) error {
 	cancel := coordinator.dryerCancel
 	done := coordinator.dryerDone
 	coordinator.mu.Unlock()
+	if current, ok := coordinator.state.Current(); !ok || current.ID != job.ID || current.Generation != job.Generation {
+		return fmt.Errorf("cancel signal is stale and no longer matches the current job")
+	}
 	updated, err := job.Transition(model.JobCancelled, now)
 	if err != nil {
 		return err

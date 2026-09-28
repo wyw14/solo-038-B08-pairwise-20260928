@@ -28,7 +28,22 @@ func (runtime *Runtime) CancelCurrent(ctx context.Context) (Cancellation, error)
 	if err := runtime.jobControl.Cancel(current, time.Now()); err != nil {
 		return Cancellation{}, err
 	}
-	return Cancellation{JobID: current.ID, Generation: current.Generation, CancelledAt: time.Now().UTC(), Components: []string{"job", "dryer", "web"}}, nil
+	components := []string{"job", "dryer"}
+	// Stop the unwind feed for this job's roll. The owner+generation fence makes
+	// repeated cancels and signals from older jobs a no-op, so a newer job's roll
+	// keeps feeding.
+	_, rollGeneration, _, _ := runtime.unwind.Snapshot()
+	if rollGeneration == 0 {
+		rollGeneration = current.RollGeneration
+	}
+	if runtime.unwind.StopFeed(string(current.ID), rollGeneration) {
+		components = append(components, "unwind")
+	}
+	// Revoke the web threading qualification so further advance is rejected.
+	if runtime.web.Cancel(string(current.ID), current.Generation) {
+		components = append(components, "web")
+	}
+	return Cancellation{JobID: current.ID, Generation: current.Generation, CancelledAt: time.Now().UTC(), Components: components}, nil
 }
 
 func (runtime *Runtime) SaveSnapshot() error {

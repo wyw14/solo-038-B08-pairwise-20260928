@@ -43,10 +43,10 @@ func (state *State) StartFeed(owner string, generation uint64, speed float64) er
 	return nil
 }
 
-func (state *State) StopFeed(owner string) bool {
+func (state *State) StopFeed(owner string, generation uint64) bool {
 	state.mu.Lock()
 	defer state.mu.Unlock()
-	if owner != state.feedOwner {
+	if owner != state.feedOwner || generation != state.rollGeneration {
 		return false
 	}
 	state.feedSpeed = 0

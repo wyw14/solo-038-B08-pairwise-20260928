@@ -347,7 +347,11 @@ func (runtime *Runtime) diagnosticsOperation(ctx context.Context, current model.
 	if runtime.registerControl.LastError() != nil {
 		runtime.RecordIncident("error", "register", runtime.registerControl.LastError().Error())
 	}
-	if runtime.unwind.StopFeed(string(current.ID)) {
+	_, rollGeneration, _, _ := runtime.unwind.Snapshot()
+	if rollGeneration == 0 {
+		rollGeneration = current.RollGeneration
+	}
+	if runtime.unwind.StopFeed(string(current.ID), rollGeneration) {
 		return runtime.feedWebOperation(ctx, current)
 	}
 	store := journal.NewStore(filepath.Join(runtime.config.DataDir, "diagnostic-events.jsonl"))

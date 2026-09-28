@@ -52,6 +52,20 @@ func (state *State) Advance(owner string, meters float64) error {
 	return nil
 }
 
+// Cancel revokes the threading qualification of the fenced owner/job generation.
+// A stale signal — a repeat cancel, or a cancel from an older job generation —
+// is a no-op and can never revoke a newer job's web path.
+func (state *State) Cancel(owner string, jobGeneration uint64) bool {
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	if owner != state.owner || jobGeneration != state.jobGeneration {
+		return false
+	}
+	stopped := state.threaded
+	state.threaded = false
+	return stopped
+}
+
 func (state *State) Snapshot() (string, uint64, uint64, bool, float64) {
 	state.mu.RLock()
 	defer state.mu.RUnlock()
